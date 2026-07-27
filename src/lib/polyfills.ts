@@ -180,3 +180,17 @@ if (typeof (globalThis as any).Buffer === "undefined") {
     from: (data: any) => new Uint8Array(data),
   };
 }
+
+// ── 6. EventTarget / Event (Hermes lacks them; youtubei.js needs) ──
+if (typeof (globalThis as any).EventTarget === "undefined") {
+  const { EventTarget } = require("event-target-shim");
+  (globalThis as any).EventTarget = EventTarget;
+}
+if (typeof (globalThis as any).Event === "undefined") {
+  (globalThis as any).Event = class Event {
+    type: string;
+    constructor(type: string) {
+      this.type = type;
+    }
+  };
+}

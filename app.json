@@ -29,7 +29,8 @@
       "permissions": ["FOREGROUND_SERVICE", "FOREGROUND_SERVICE_MEDIA_PLAYBACK"]
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "./plugins/withOkHttpIpv4Dns"
     ],
     "extra": {
       "eas": {

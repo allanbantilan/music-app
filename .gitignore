@@ -14,3 +14,6 @@ build/
 *.tsbuildinfo
 coverage/
 .vite/
+
+# local planning doc (untracked)
+docs/ytmusic-clone-plan.md
