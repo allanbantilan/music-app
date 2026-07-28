@@ -1,6 +1,6 @@
 import { ScrollView, View, Text, Pressable } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Image } from "expo-image";
+import { Image } from "react-native";
 import { usePlaylist } from "@/lib/api";
 import { getThumbnailUrl } from "@/lib/utils";
 import TrackList from "@/components/TrackList";
@@ -15,36 +15,34 @@ export default function PlaylistScreen() {
   const router = useRouter();
   const { setQueue, setPlaying } = usePlayerStore();
 
+  // ponytail: resolve only the track we're about to play (stream URLs expire
+  // and cost a fetch each — don't resolve the whole playlist up front). Queue
+  // is tracked in the store; the rest resolve lazily when skipped to.
+  const playOne = async (track: Song) => {
+    setPlaying(true);
+    try {
+      const t = await songToTrack(track);
+      await TrackPlayer.reset();
+      await TrackPlayer.add(t);
+      await TrackPlayer.play();
+    } catch (e) {
+      console.error("Playback error:", e);
+      setPlaying(false);
+    }
+  };
+
   const handlePlayAll = async (shuffle = false) => {
     if (!playlist?.tracks.length) return;
     const tracks = shuffle
       ? [...playlist.tracks].sort(() => Math.random() - 0.5)
       : playlist.tracks;
     setQueue(tracks);
-    try {
-      const playerTracks = await Promise.all(tracks.map(songToTrack));
-      await TrackPlayer.reset();
-      await TrackPlayer.add(playerTracks);
-      await TrackPlayer.play();
-      setPlaying(true);
-    } catch (e) {
-      console.error("Playback error:", e);
-    }
+    await playOne(tracks[0]);
   };
 
   const handlePlayTrack = async (track: Song) => {
     setQueue(playlist?.tracks ?? []);
-    try {
-      const playerTracks = await Promise.all((playlist?.tracks ?? []).map(songToTrack));
-      await TrackPlayer.reset();
-      await TrackPlayer.add(playerTracks);
-      const idx = (playlist?.tracks ?? []).findIndex((t) => t.id === track.id);
-      if (idx >= 0) await TrackPlayer.skip(idx);
-      await TrackPlayer.play();
-      setPlaying(true);
-    } catch (e) {
-      console.error("Playback error:", e);
-    }
+    await playOne(track);
   };
 
   if (isLoading || !playlist) {
@@ -69,7 +67,7 @@ export default function PlaylistScreen() {
         <Image
           source={{ uri: getThumbnailUrl(playlist.thumbnail, 500) }}
           className="h-[250px] w-[250px] rounded-xl"
-          contentFit="cover"
+          resizeMode="cover"
         />
       </View>
 

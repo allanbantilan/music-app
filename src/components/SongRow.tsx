@@ -1,5 +1,5 @@
 import { View, Text, Pressable } from "react-native";
-import { Image } from "expo-image";
+import { Image } from "react-native";
 import type { Song } from "@ytmusic/shared-types";
 import { getThumbnailUrl, formatDuration } from "@/lib/utils";
 
@@ -28,9 +28,13 @@ export default function SongRow({
       )}
 
       <Image
-        source={{ uri: getThumbnailUrl(song.thumbnail, 120) }}
-        className="h-11 w-11 rounded-md"
-        contentFit="cover"
+        source={
+          getThumbnailUrl(song.thumbnail, 120)
+            ? { uri: getThumbnailUrl(song.thumbnail, 120) }
+            : undefined
+        }
+        className="h-11 w-11 rounded-md bg-yt-surface"
+        resizeMode="cover"
       />
 
       <View className="ml-3 flex-1">
@@ -49,11 +53,11 @@ export default function SongRow({
           className="text-xs text-yt-textSecondary"
           numberOfLines={1}
         >
-          {song.artist.name}
+          {song.artist?.name ?? ""}
         </Text>
       </View>
 
-      {showDuration && (
+      {showDuration && song.duration > 0 && (
         <Text className="ml-2 text-xs text-yt-textSecondary">
           {formatDuration(song.duration)}
         </Text>

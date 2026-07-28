@@ -1,7 +1,7 @@
 import { View, Text, Pressable, FlatList } from "react-native";
 import { useRouter } from "expo-router";
 import { useLibraryStore } from "@/stores/libraryStore";
-import { Image } from "expo-image";
+import { Image } from "react-native";
 
 const QUICK_ACTIONS = [
   { id: "liked", label: "Liked Songs", icon: "❤️", count: 0 },

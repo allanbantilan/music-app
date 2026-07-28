@@ -1,5 +1,5 @@
 export function formatDuration(seconds: number): string {
-  if (seconds < 0) return "0:00";
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, "0")}`;
@@ -21,7 +21,7 @@ export function getThumbnailUrl(
   thumbnails: { url: string; width: number; height: number }[],
   preferredSize: number = 300
 ): string {
-  if (!thumbnails.length) return "";
+  if (!thumbnails?.length) return "";
   const sorted = [...thumbnails].sort(
     (a, b) =>
       Math.abs(a.width - preferredSize) - Math.abs(b.width - preferredSize)

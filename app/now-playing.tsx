@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import PlayerSheet from "@/components/PlayerSheet";
 import { usePlayerStore } from "@/stores/playerStore";
 import { formatDuration } from "@/lib/utils";
@@ -24,14 +25,18 @@ export default function NowPlayingScreen() {
   const tabs: BottomTab[] = ["UP NEXT", "LYRICS", "RELATED"];
 
   return (
-    <View className="flex-1 bg-yt-bg">
-      {/* Close button */}
-      <Pressable
-        onPress={() => router.back()}
-        className="absolute top-12 left-4 z-10 p-2"
-      >
-        <Text className="text-xl text-yt-textPrimary">↓</Text>
-      </Pressable>
+    <View className="flex-1 bg-yt-bg" style={{ paddingTop: insets.top }}>
+      {/* Header row — in-flow so it never overlaps the artwork */}
+      <View className="flex-row items-center justify-between px-3 py-2">
+        <Pressable onPress={() => router.back()} hitSlop={12} className="p-1">
+          <Ionicons name="chevron-down" size={28} color="#fff" />
+        </Pressable>
+        <Text className="text-xs font-semibold tracking-widest text-yt-textSecondary">
+          PLAYING NOW
+        </Text>
+        {/* spacer balances the chevron so the label stays centered */}
+        <View className="w-9" />
+      </View>
 
       {/* Player content */}
       <View className="flex-1">
@@ -66,7 +71,7 @@ export default function NowPlayingScreen() {
         </View>
 
         {/* Tab content */}
-        <View className="h-[200px]">
+        <View className="h-[120px]">
           {activeTab === "UP NEXT" && (
             <FlatList
               data={queue}

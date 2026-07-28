@@ -1,4 +1,5 @@
-import { FlatList, View, Text } from "react-native";
+import { FlatList, View, Text, Pressable } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { useExplore } from "@/lib/api";
 import ShelfCarousel from "@/components/ShelfCarousel";
 import MediaCard from "@/components/MediaCard";
@@ -6,7 +7,7 @@ import ChipRow from "@/components/ChipRow";
 import { useRouter } from "expo-router";
 
 export default function ExploreScreen() {
-  const { data: explore, isLoading } = useExplore();
+  const { data: explore, isLoading, error } = useExplore();
   const router = useRouter();
 
   if (isLoading) {
@@ -17,12 +18,34 @@ export default function ExploreScreen() {
     );
   }
 
+  if (error) {
+    return (
+      <View className="flex-1 items-center justify-center bg-yt-bg px-6">
+        <Text className="text-center text-yt-textSecondary">
+          Explore unavailable{"\n"}
+          {String((error as any)?.message ?? error)}
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <FlatList
       data={explore?.charts ?? []}
       keyExtractor={(item) => item.id}
       ListHeaderComponent={
         <View>
+          {/* Search entry — opens the full song/album/artist search */}
+          <Pressable
+            onPress={() => router.push("/search")}
+            className="mx-4 mt-3 mb-1 flex-row items-center gap-3 rounded-full bg-yt-surface px-4 py-3"
+          >
+            <Ionicons name="search" size={20} color="#AAAAAA" />
+            <Text className="text-sm text-yt-textSecondary">
+              Songs, albums, artists
+            </Text>
+          </Pressable>
+
           {explore?.moodsAndGenres && (
             <View className="py-4">
               <ChipRow

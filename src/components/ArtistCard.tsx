@@ -1,5 +1,5 @@
 import { Text, Pressable } from "react-native";
-import { Image } from "expo-image";
+import { Image } from "react-native";
 import type { ArtistInfo } from "@ytmusic/shared-types";
 import { getThumbnailUrl } from "@/lib/utils";
 
@@ -12,9 +12,13 @@ export default function ArtistCard({ artist, onPress }: ArtistCardProps) {
   return (
     <Pressable onPress={onPress} className="items-center w-[100px]">
       <Image
-        source={{ uri: getThumbnailUrl(artist.thumbnail ?? [], 200) }}
-        className="h-[80px] w-[80px] rounded-full"
-        contentFit="cover"
+        source={
+          getThumbnailUrl(artist.thumbnail ?? [], 200)
+            ? { uri: getThumbnailUrl(artist.thumbnail ?? [], 200) }
+            : undefined
+        }
+        className="h-[80px] w-[80px] rounded-full bg-yt-surface"
+        resizeMode="cover"
       />
       <Text
         className="mt-1.5 text-xs font-medium text-yt-textPrimary text-center"

@@ -1,6 +1,6 @@
 import { ScrollView, View, Text, Pressable } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Image } from "expo-image";
+import { Image } from "react-native";
 import { useArtist } from "@/lib/api";
 import { getThumbnailUrl, formatDuration } from "@/lib/utils";
 import SongRow from "@/components/SongRow";
@@ -44,7 +44,7 @@ export default function ArtistScreen() {
         <Image
           source={{ uri: getThumbnailUrl(artist.headerImage, 800) }}
           className="h-full w-full"
-          contentFit="cover"
+          resizeMode="cover"
         />
         <View className="absolute bottom-0 left-0 right-0 h-[150px] bg-gradient-to-t from-yt-bg to-transparent" />
         <Text className="absolute bottom-4 left-4 text-3xl font-bold text-white">
@@ -143,7 +143,7 @@ export default function ArtistScreen() {
                 <Image
                   source={{ uri: getThumbnailUrl(related.thumbnail ?? [], 200) }}
                   className="h-[80px] w-[80px] rounded-full"
-                  contentFit="cover"
+                  resizeMode="cover"
                 />
                 <Text
                   className="mt-1.5 text-xs font-medium text-yt-textPrimary text-center"

@@ -33,22 +33,22 @@ import type {
 let instance: Innertube | null = null;
 
 async function getYT(): Promise<Innertube> {
+  // Metadata only (browse/search/playlists). Playback goes through the backend
+  // proxy, so no po_token/BotGuard is needed here.
   if (!instance) {
-    instance = await Innertube.create({
-      lang: "en",
-      location: "US",
-    });
+    instance = await Innertube.create({ lang: "en", location: "US" });
   }
   return instance;
 }
 
 // ── Helpers ────────────────────────────────────────────────────
 
-function thumb(arr: any[]): Thumbnail[] {
-  return (arr ?? []).map((t) => ({
-    url: t.url ?? t.toString?.() ?? "",
-    width: t.width ?? 0,
-    height: t.height ?? 0,
+function thumb(arr: any): Thumbnail[] {
+  const list = Array.isArray(arr) ? arr : arr ? Object.values(arr) : [];
+  return list.map((t: any) => ({
+    url: t?.url ?? t?.toString?.() ?? "",
+    width: t?.width ?? 0,
+    height: t?.height ?? 0,
   }));
 }
 
@@ -102,53 +102,77 @@ function parseVideo(item: any): Video {
 
 // ── Public API ─────────────────────────────────────────────────
 
-export async function getHomeFeed(): Promise<HomeFeed> {
-  const yt = await getYT();
-  const feed = await yt.music.getHomeFeed();
-  const data = feed as any;
-
+// Walk a youtubei.js music page's `.sections` into our Shelf[]. Shared by the
+// home feed and explore — same response shape, so one parser, no guessing.
+function parseSections(sections: any[]): Shelf[] {
   const shelves: Shelf[] = [];
-  const moods: MoodChip[] = [];
 
-  const sections = data.contents ?? [];
+  for (const section of sections ?? []) {
+    const title = section.header?.title?.text ?? "";
+    const contents = section.contents ?? [];
+    const items: any[] = [];
+    let type: Shelf["type"] = "card_playlist";
 
-  for (const section of sections) {
-    if (section.header && section.contents) {
-      const title = section.header?.title ?? "";
-      const items: any[] = [];
-      let type: Shelf["type"] = "card_playlist";
-
-      for (const item of section.contents) {
-        if (item.type === "Song" || item.type === "song") {
-          items.push(parseSong(item));
-          type = "compact_song";
-        } else if (item.type === "Album" || item.type === "album") {
-          items.push(parseAlbum(item));
-          type = "card_album";
-        } else if (item.type === "Artist" || item.type === "artist") {
-          items.push(parseArtist(item));
-          type = "card_artist";
-        } else if (item.type === "Playlist" || item.type === "playlist") {
+    for (const item of contents) {
+      const it = item as any;
+      // MusicResponsiveListItem exposes thumbnails via .thumbnail.contents;
+      // MusicTwoRowItem via a plain .thumbnail array. Cover both.
+      const th = it.thumbnails ?? it.thumbnail?.contents ?? it.thumbnail ?? [];
+      switch (it.item_type) {
+        case "song":
+        case "video":
           items.push({
-            id: item.id ?? "",
-            title: item.title?.text ?? item.title ?? "",
-            thumbnail: thumb(item.thumbnails ?? []),
-            trackCount: item.trackCount ?? item.videoCount ?? 0,
+            id: it.id ?? "",
+            title: it.title?.text ?? it.title ?? "",
+            artist: { id: "", name: it.subtitle?.text ?? it.artists?.[0]?.name ?? "" },
+            duration: it.duration?.seconds ?? 0,
+            thumbnail: thumb(th),
+            isExplicit: false,
+          });
+          type = "compact_song";
+          break;
+        case "album":
+          items.push({
+            id: it.id ?? "",
+            title: it.title?.text ?? it.title ?? "",
+            thumbnail: thumb(th),
+          });
+          type = "card_album";
+          break;
+        case "artist":
+          items.push({
+            id: it.id ?? "",
+            name: it.title?.text ?? it.title ?? "",
+            thumbnail: thumb(th),
+          });
+          type = "card_artist";
+          break;
+        case "playlist":
+        default:
+          items.push({
+            id: it.id ?? "",
+            title: it.title?.text ?? it.title ?? "",
+            thumbnail: thumb(th),
+            trackCount: it.item_count ?? 0,
+            subtitle: it.subtitle?.text ?? "",
           });
           type = "card_playlist";
-        } else if (item.type === "Video" || item.type === "video") {
-          items.push(parseVideo(item));
-          type = "card_video";
-        }
+          break;
       }
+    }
 
-      if (items.length > 0) {
-        shelves.push({ id: `shelf-${shelves.length}`, title, type, items });
-      }
+    if (items.length > 0) {
+      shelves.push({ id: `shelf-${shelves.length}`, title, type, items });
     }
   }
 
-  return { shelves, moods };
+  return shelves;
+}
+
+export async function getHomeFeed(): Promise<HomeFeed> {
+  const yt = await getYT();
+  const data = (await yt.music.getHomeFeed()) as any;
+  return { shelves: parseSections(data.sections ?? []), moods: [] };
 }
 
 export async function search(
@@ -159,8 +183,7 @@ export async function search(
   const opts: any = {};
   if (filter) opts.filter = filter;
 
-  const response = await yt.music.search(query, opts);
-  const results = (response as any).results ?? response;
+  const response = (await yt.music.search(query, opts)) as any;
 
   const out: SearchResults = {
     songs: [],
@@ -171,28 +194,23 @@ export async function search(
     podcasts: [],
   };
 
-  if (results.songs) {
-    for (const s of results.songs) {
-      if (s.id) out.songs.push(parseSong(s));
-    }
+  // Each getter (.songs/.videos/...) returns a MusicShelf section (or
+  // undefined); the actual items are MusicResponsiveListItem in `.contents`.
+  const items = (name: string): any[] => response[name]?.contents ?? [];
+
+  for (const s of items("songs")) {
+    if (s.id) out.songs.push(parseSong(s));
   }
-  if (results.videos) {
-    for (const v of results.videos) {
-      if (v.id) out.videos.push(parseVideo(v));
-    }
+  for (const v of items("videos")) {
+    if (v.id) out.videos.push(parseVideo(v));
   }
-  if (results.albums) {
-    for (const a of results.albums) {
-      if (a.id) out.albums.push(parseAlbum(a));
-    }
+  for (const a of items("albums")) {
+    if (a.id) out.albums.push(parseAlbum(a));
   }
-  if (results.artists) {
-    for (const a of results.artists) {
-      if (a.id) out.artists.push(parseArtist(a));
-    }
+  for (const a of items("artists")) {
+    if (a.id) out.artists.push(parseArtist(a));
   }
-  const playlists = results.playlists ?? results.community_playlists ?? [];
-  for (const p of playlists) {
+  for (const p of items("playlists")) {
     if (p.id) {
       out.playlists.push({
         id: p.id,
@@ -208,8 +226,13 @@ export async function search(
 
 export async function getSuggestions(query: string): Promise<string[]> {
   const yt = await getYT();
-  const res = await yt.music.getSearchSuggestions(query);
-  return ((res as any).results ?? res ?? []) as string[];
+  // Returns SearchSuggestionsSection[] — each holds SearchSuggestion nodes
+  // whose text lives at `.suggestion.text`. Flatten to plain strings.
+  const sections = (await yt.music.getSearchSuggestions(query)) as any[];
+  return (sections ?? [])
+    .flatMap((s) => s.contents ?? [])
+    .map((c: any) => c.suggestion?.text ?? "")
+    .filter((t: string) => t);
 }
 
 export async function getArtist(channelId: string): Promise<ArtistPage> {
@@ -260,16 +283,36 @@ export async function getPlaylist(playlistId: string): Promise<PlaylistPage> {
   const yt = await getYT();
   const data = (await yt.music.getPlaylist(playlistId)) as any;
 
+  // youtubei.js exposes tracks under `.items` as MusicResponsiveListItem.
+  const rawItems: any[] = data.items ?? data.contents ?? data.tracks ?? [];
+
+  const tracks = rawItems
+    .filter((it: any) => it && (it.id || it.title))
+    .map((it: any) => ({
+      id: it.id ?? it.videoId ?? "",
+      title: it.title?.text ?? it.title ?? "",
+      artist: {
+        id: it.artists?.[0]?.channel_id ?? it.author?.id ?? "",
+        name:
+          it.artists?.[0]?.name ??
+          it.author?.name ??
+          it.subtitle?.text ??
+          "",
+      },
+      duration: it.duration?.seconds ?? 0,
+      thumbnail: thumb(it.thumbnail ?? it.thumbnails ?? []),
+      isExplicit: it.badges?.some?.((b: any) => b?.label === "Explicit") ?? false,
+    }));
+
+  const header = data.header ?? {};
   return {
     id: playlistId,
-    title: data.title ?? "",
-    artist: data.artists?.[0]
-      ? { id: data.artists[0].id ?? "", name: data.artists[0].name ?? "" }
-      : undefined,
-    thumbnail: thumb(data.thumbnails ?? []),
-    description: data.description ?? undefined,
-    trackCount: data.trackCount ?? data.tracks?.length ?? 0,
-    tracks: (data.tracks ?? []).map(parseSong),
+    title: header.title?.text ?? data.title?.text ?? data.title ?? "",
+    artist: undefined,
+    thumbnail: thumb(header.thumbnail ?? data.thumbnails ?? []),
+    description: header.description?.text ?? data.description ?? undefined,
+    trackCount: tracks.length,
+    tracks,
   };
 }
 
@@ -303,7 +346,9 @@ export async function getStreamUrl(
   quality: "best" | "medium" | "low" = "best"
 ): Promise<StreamInfo> {
   const yt = await getYT();
-  const info = await yt.getBasicInfo(videoId);
+  // With po_token in the session, the ANDROID client returns direct stream
+  // URLs (no signature/decipher needed).
+  const info = await yt.getBasicInfo(videoId, "ANDROID" as any);
 
   if (!info) throw new Error("Video not found");
 
@@ -315,37 +360,44 @@ export async function getStreamUrl(
     ...(streamingData.formats ?? []),
   ];
 
-  // Prefer audio-only formats with a URL
-  const audioFormats = formats.filter(
-    (f: any) => f.mime_type?.startsWith("audio/") && f.url
-  );
-
+  // youtubei.js formats are usually cipher-protected — they have NO plain
+  // `.url`, only a signature that must be deciphered via the player. Filtering
+  // on `.url` dropped them all ("No playable format found"). chooseFormat picks
+  // the best audio format; decipher() resolves the real URL.
   let selected: any;
-
-  if (audioFormats.length > 0) {
-    const sorted = [...audioFormats].sort(
+  try {
+    selected = info.chooseFormat({ type: "audio", quality: "best" });
+  } catch {
+    const audio = formats.filter((f: any) => f.mime_type?.startsWith("audio/"));
+    const sorted = [...audio].sort(
       (a: any, b: any) => (a.bitrate ?? 0) - (b.bitrate ?? 0)
     );
     if (quality === "low") selected = sorted[0];
     else if (quality === "medium") selected = sorted[Math.floor(sorted.length / 2)];
     else selected = sorted[sorted.length - 1];
-  } else {
-    // Fallback: any format with a URL
-    selected = formats.find((f: any) => f.url);
   }
 
-  if (!selected?.url) throw new Error("No playable format found");
+  // decipher() is ASYNC — must await it, or you get a pending Promise.
+  // With a valid po_token, WEB formats carry a decipherable signature.
+  // decipher() is async — await it.
+  let url: string | undefined;
+  try {
+    const d = await selected?.decipher?.(yt.session.player);
+    if (typeof d === "string") url = d;
+  } catch {}
+  if (!url && typeof selected?.url === "string") url = selected.url;
+  if (!url) throw new Error("No playable format found");
 
   // Parse expiry from URL
   let expiresAt = Date.now() + 6 * 60 * 60 * 1000;
   try {
-    const url = new URL(selected.url);
-    const exp = url.searchParams.get("expire");
+    const u = new URL(url);
+    const exp = u.searchParams.get("expire");
     if (exp) expiresAt = parseInt(exp) * 1000;
   } catch {}
 
   return {
-    url: selected.url,
+    url,
     mimeType: selected.mime_type ?? "unknown",
     bitrate: selected.bitrate ?? 0,
     expiresAt,
@@ -433,15 +485,13 @@ export async function getExplore(): Promise<{
 }> {
   const yt = await getYT();
   const data = (await yt.music.getExplore()) as any;
+  const charts = parseSections(data.sections ?? []);
 
+  // Same page shape as home — reuse the section walker. Charts/new-release
+  // shelves render as carousels; moods stay empty (YTM shows them inline).
   return {
-    newReleases: (data.new_releases ?? []).map(parseAlbum),
-    charts: [],
-    moodsAndGenres: (data.moods ?? []).map((m: any) => ({
-      title: m.title?.text ?? m.title ?? "",
-      id: m.id ?? "",
-      color: m.color ?? undefined,
-      thumbnail: thumb(m.thumbnails ?? []),
-    })),
+    newReleases: [],
+    charts,
+    moodsAndGenres: [],
   };
 }

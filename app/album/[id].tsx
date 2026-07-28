@@ -1,6 +1,6 @@
 import { ScrollView, View, Text, Pressable } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Image } from "expo-image";
+import { Image } from "react-native";
 import { useAlbum } from "@/lib/api";
 import { getThumbnailUrl } from "@/lib/utils";
 import TrackList from "@/components/TrackList";
@@ -70,7 +70,7 @@ export default function AlbumScreen() {
         <Image
           source={{ uri: getThumbnailUrl(album.thumbnail, 500) }}
           className="h-[250px] w-[250px] rounded-xl"
-          contentFit="cover"
+          resizeMode="cover"
         />
       </View>
 

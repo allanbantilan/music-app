@@ -40,8 +40,10 @@ export default function HomeScreen() {
 
   if (error) {
     return (
-      <View className="flex-1 items-center justify-center bg-yt-bg">
-        <Text className="text-yt-textSecondary">Failed to load home feed</Text>
+      <View className="flex-1 items-center justify-center bg-yt-bg px-6">
+        <Text className="text-center text-yt-textSecondary">
+          {String((error as any)?.message ?? error)}
+        </Text>
       </View>
     );
   }
@@ -61,14 +63,24 @@ export default function HomeScreen() {
         <ShelfCarousel
           shelf={item}
           onItemPress={(i) => {
-            if ("duration" in i && "thumbnail" in i) {
-              handlePlaySong(i as Song);
-            }
+            if (item.type === "compact_song") handlePlaySong(i as Song);
+            else if (item.type === "card_album")
+              router.push({ pathname: "/album/[id]", params: { id: i.id } });
+            else if (item.type === "card_artist")
+              router.push({ pathname: "/artist/[id]", params: { id: i.id } });
+            else router.push({ pathname: "/playlist/[id]", params: { id: i.id } });
           }}
         />
       )}
       contentContainerClassName="pb-4"
       showsVerticalScrollIndicator={false}
+      ListEmptyComponent={
+        <View className="mt-24 items-center px-6">
+          <Text className="text-yt-textSecondary">
+            No shelves (feed returned {feed?.shelves?.length ?? 0})
+          </Text>
+        </View>
+      }
     />
   );
 }
