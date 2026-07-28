@@ -5,7 +5,7 @@ import TrackPlayer, {
   Track,
 } from "react-native-track-player";
 import type { Song } from "@ytmusic/shared-types";
-import { getStreamUrl } from "./innertube";
+import { streamUrl, authHeaders } from "./config";
 
 export async function setupPlayer() {
   let isSetup = false;
@@ -45,19 +45,19 @@ export async function setupPlayer() {
 }
 
 /**
- * Convert a Song into a TrackPlayer Track by fetching the stream URL
- * from YouTube directly (on-device, no server).
+ * Convert a Song into a TrackPlayer Track. Audio streams from the backend
+ * proxy (yt-dlp), which resolves + range-serves the bytes. The URL is stable
+ * (backend caches the resolved googlevideo URL), so no client-side expiry.
  */
 export async function songToTrack(song: Song): Promise<Track> {
-  const stream = await getStreamUrl(song.id);
   return {
     id: song.id,
-    url: stream.url,
+    url: streamUrl(song.id),
+    headers: authHeaders(),
     title: song.title,
     artist: song.artist.name,
     artwork: song.thumbnail[0]?.url,
     duration: song.duration,
-    contentType: stream.mimeType,
   };
 }
 
@@ -80,23 +80,6 @@ export async function addTracks(tracks: Track[]) {
 export async function playTrackAtIndex(index: number) {
   await TrackPlayer.skip(index);
   await TrackPlayer.play();
-}
-
-/**
- * Handle stream expiry — re-fetch the URL and update the active track.
- */
-export async function refreshStream() {
-  const track = await TrackPlayer.getActiveTrack();
-  if (!track) return;
-
-  const pos = await TrackPlayer.getPosition();
-  const stream = await getStreamUrl(track.id);
-  await TrackPlayer.update({
-    id: track.id,
-    url: stream.url,
-    contentType: stream.mimeType,
-  });
-  await TrackPlayer.seekTo(pos);
 }
 
 export const PlaybackService = async function () {
