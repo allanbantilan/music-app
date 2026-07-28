@@ -9,19 +9,16 @@ interface ArtistCardProps {
 }
 
 export default function ArtistCard({ artist, onPress }: ArtistCardProps) {
+  const uri = getThumbnailUrl(artist.thumbnail ?? [], 200);
   return (
-    <Pressable onPress={onPress} className="items-center w-[100px]">
+    <Pressable onPress={onPress} className="w-[100px] items-center active:opacity-80">
       <Image
-        source={
-          getThumbnailUrl(artist.thumbnail ?? [], 200)
-            ? { uri: getThumbnailUrl(artist.thumbnail ?? [], 200) }
-            : undefined
-        }
-        className="h-[80px] w-[80px] rounded-full bg-yt-surface"
+        source={uri ? { uri } : undefined}
+        className="h-[92px] w-[92px] rounded-full bg-surface-raised"
         resizeMode="cover"
       />
       <Text
-        className="mt-1.5 text-xs font-medium text-yt-textPrimary text-center"
+        className="mt-2 text-center text-[13px] font-medium text-primary"
         numberOfLines={2}
       >
         {artist.name}

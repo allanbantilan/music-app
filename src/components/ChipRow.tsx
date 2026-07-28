@@ -8,28 +8,42 @@ interface Chip {
 
 interface ChipRowProps {
   chips: Chip[];
+  activeId?: string;
   onChipPress?: (chip: Chip) => void;
 }
 
-export default function ChipRow({ chips, onChipPress }: ChipRowProps) {
+/**
+ * YT Music pill filter row. Active = white fill / black text; inactive =
+ * raised surface / primary text.
+ */
+export default function ChipRow({ chips, activeId, onChipPress }: ChipRowProps) {
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerClassName="px-4 gap-2"
     >
-      {chips.map((chip) => (
-        <Pressable
-          key={chip.id}
-          onPress={() => onChipPress?.(chip)}
-          className="rounded-full bg-yt-surface px-4 py-2"
-          style={chip.color ? { backgroundColor: chip.color } : undefined}
-        >
-          <Text className="text-sm font-medium text-yt-textPrimary">
-            {chip.title}
-          </Text>
-        </Pressable>
-      ))}
+      {chips.map((chip) => {
+        const active = chip.id === activeId;
+        return (
+          <Pressable
+            key={chip.id}
+            onPress={() => onChipPress?.(chip)}
+            className={`rounded-pill px-4 py-2 active:opacity-80 ${
+              active ? "bg-chip-active" : "bg-surface-raised"
+            }`}
+            style={chip.color && !active ? { backgroundColor: chip.color } : undefined}
+          >
+            <Text
+              className={`text-sm ${
+                active ? "font-semibold text-black" : "font-medium text-primary"
+              }`}
+            >
+              {chip.title}
+            </Text>
+          </Pressable>
+        );
+      })}
     </ScrollView>
   );
 }

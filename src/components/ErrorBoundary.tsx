@@ -26,18 +26,18 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.error) {
       return (
-        <View className="flex-1 items-center justify-center bg-yt-bg px-6">
-          <Text className="mb-3 text-center text-yt-textPrimary">
+        <View className="flex-1 items-center justify-center bg-base px-6">
+          <Text className="mb-3 text-center text-primary">
             Something broke on this screen.
           </Text>
-          <Text className="mb-6 text-center text-xs text-yt-textSecondary">
+          <Text className="mb-6 text-center text-xs text-secondary">
             {this.state.error.message}
           </Text>
           <Pressable
             onPress={() => this.setState({ error: null })}
-            className="rounded-full bg-yt-textPrimary px-6 py-2"
+            className="rounded-full bg-primary px-6 py-2"
           >
-            <Text className="font-bold text-yt-bg">Try again</Text>
+            <Text className="font-bold text-black">Try again</Text>
           </Pressable>
         </View>
       );

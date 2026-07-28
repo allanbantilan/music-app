@@ -3,15 +3,30 @@ import type { Song } from "@ytmusic/shared-types";
 
 export type RepeatMode = "off" | "all" | "one";
 
+export interface PlaybackContext {
+  type: "playlist" | "album" | "artist" | "search" | "liked" | "home";
+  id: string;
+  title: string;
+}
+
 interface PlayerState {
   currentTrack: Song | null;
   queue: Song[];
+  originalQueue: Song[];
+  currentIndex: number;
   history: string[];
   isPlaying: boolean;
+  isBuffering: boolean;
   shuffle: boolean;
   repeat: RepeatMode;
   position: number;
   duration: number;
+  playbackContext: PlaybackContext | null;
+
+  setCurrentIndex: (i: number) => void;
+  setBuffering: (b: boolean) => void;
+  setOriginalQueue: (q: Song[]) => void;
+  setPlaybackContext: (c: PlaybackContext | null) => void;
 
   setCurrentTrack: (track: Song | null) => void;
   setQueue: (tracks: Song[], startIndex?: number) => void;
@@ -30,12 +45,21 @@ interface PlayerState {
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   currentTrack: null,
   queue: [],
+  originalQueue: [],
+  currentIndex: 0,
   history: [],
   isPlaying: false,
+  isBuffering: false,
   shuffle: false,
   repeat: "off",
   position: 0,
   duration: 0,
+  playbackContext: null,
+
+  setCurrentIndex: (i) => set({ currentIndex: i }),
+  setBuffering: (b) => set({ isBuffering: b }),
+  setOriginalQueue: (q) => set({ originalQueue: q }),
+  setPlaybackContext: (c) => set({ playbackContext: c }),
 
   setCurrentTrack: (track) => set({ currentTrack: track }),
 

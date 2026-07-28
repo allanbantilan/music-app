@@ -1,13 +1,15 @@
 import { useRef, useState } from "react";
 import { View, Text, PanResponder, LayoutChangeEvent } from "react-native";
-import TrackPlayer, { useProgress } from "react-native-track-player";
+import { useProgress } from "react-native-track-player";
 import { formatDuration } from "@/lib/utils";
+import { COLORS } from "@/lib/tokens";
+import { seekTo } from "@/lib/playback";
 
 /**
  * YT Music scrubber. Live progress from track-player; drag or tap to seek.
- * The thumb grows while scrubbing — the page's one interactive flourish.
+ * Track thickens 3→5px and the thumb scales 12→18px while scrubbing.
  */
-export default function Seekbar({ accent = "#FFFFFF" }: { accent?: string }) {
+export default function Seekbar({ accent = COLORS.accent }: { accent?: string }) {
   const { position, duration } = useProgress(250);
   const [width, setWidth] = useState(0);
   const [scrub, setScrub] = useState<number | null>(null);
@@ -27,7 +29,7 @@ export default function Seekbar({ accent = "#FFFFFF" }: { accent?: string }) {
         setScrub(seekFrac(e.nativeEvent.locationX) * durRef.current),
       onPanResponderRelease: async (e) => {
         const to = seekFrac(e.nativeEvent.locationX) * durRef.current;
-        await TrackPlayer.seekTo(to);
+        await seekTo(to);
         setScrub(null);
       },
       onPanResponderTerminate: () => setScrub(null),
@@ -53,7 +55,10 @@ export default function Seekbar({ accent = "#FFFFFF" }: { accent?: string }) {
         className="justify-center"
         style={{ height: 24 }}
       >
-        <View className="h-[3px] w-full rounded-full bg-white/25">
+        <View
+          className="w-full rounded-full bg-white/20"
+          style={{ height: scrubbing ? 5 : 3 }}
+        >
           <View
             className="h-full rounded-full"
             style={{ width: pct * width, backgroundColor: accent }}
@@ -62,16 +67,16 @@ export default function Seekbar({ accent = "#FFFFFF" }: { accent?: string }) {
         <View
           className="absolute rounded-full"
           style={{
-            width: scrubbing ? 16 : 12,
-            height: scrubbing ? 16 : 12,
+            width: scrubbing ? 18 : 12,
+            height: scrubbing ? 18 : 12,
             backgroundColor: accent,
-            left: pct * width - (scrubbing ? 8 : 6),
+            left: pct * width - (scrubbing ? 9 : 6),
           }}
         />
       </View>
-      <View className="flex-row justify-between">
-        <Text className="text-xs text-yt-textSecondary">{formatDuration(shown)}</Text>
-        <Text className="text-xs text-yt-textSecondary">{formatDuration(duration)}</Text>
+      <View className="mt-1 flex-row justify-between">
+        <Text className="text-[13px] text-secondary">{formatDuration(shown)}</Text>
+        <Text className="text-[13px] text-secondary">{formatDuration(duration)}</Text>
       </View>
     </View>
   );

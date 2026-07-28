@@ -1,26 +1,36 @@
 import { useState } from "react";
 import { View, Text, Pressable, StyleSheet, Dimensions } from "react-native";
 import { Image } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import { BlurView } from "expo-blur";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { usePlayerStore } from "@/stores/playerStore";
+import { useLibraryStore } from "@/stores/libraryStore";
 import { getThumbnailUrl } from "@/lib/utils";
+import { COLORS } from "@/lib/tokens";
 import Seekbar from "@/components/Seekbar";
-import TrackPlayer from "react-native-track-player";
+import IconButton from "@/components/IconButton";
+import Marquee from "@/components/anim/Marquee";
+import BufferingRing from "@/components/anim/BufferingRing";
+import { togglePlay, prev, next, toggleShuffle, cycleRepeat } from "@/lib/playback";
 
 export default function PlayerSheet() {
-  const {
-    currentTrack,
-    isPlaying,
-    setPlaying,
-    shuffle,
-    repeat,
-    toggleShuffle,
-    cycleRepeat,
-  } = usePlayerStore();
-  const [liked, setLiked] = useState(false);
+  const { currentTrack, isPlaying, isBuffering, shuffle, repeat } = usePlayerStore();
+  const likedIds = useLibraryStore((s) => s.likedSongIds);
+  const toggleLike = useLibraryStore((s) => s.toggleLikeSong);
+  const router = useRouter();
 
   if (!currentTrack) return null;
+
+  const liked = likedIds.has(currentTrack.id);
+  const artistId = currentTrack.artist?.id;
+  const goArtist = () => {
+    if (!artistId) return;
+    router.back(); // collapse to mini player first (§6)
+    setTimeout(() => router.push({ pathname: "/artist/[id]", params: { id: artistId } }), 60);
+  };
 
   const art = getThumbnailUrl(currentTrack.thumbnail, 600);
   // Size artwork from the MEASURED player area (not the window) so it always
@@ -33,41 +43,15 @@ export default function PlayerSheet() {
     Math.min(width * 0.72, 300, areaH ? areaH - 240 : width * 0.72)
   );
 
-  const togglePlay = async () => {
-    if (isPlaying) {
-      await TrackPlayer.pause();
-      setPlaying(false);
-    } else {
-      await TrackPlayer.play();
-      setPlaying(true);
-    }
-  };
-
-  const prev = async () => {
-    try {
-      await TrackPlayer.skipToPrevious();
-    } catch {}
-  };
-
-  const next = async () => {
-    try {
-      await TrackPlayer.skipToNext();
-    } catch {}
-  };
-
   return (
     <View className="flex-1">
-      {/* Blurred artwork backdrop + dark gradient — YTM ambient look */}
+      {/* Ambient: full-bleed artwork → expo-blur → dark gradient (YTM look) */}
       {art ? (
-        <Image
-          source={{ uri: art }}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-          blurRadius={40}
-        />
+        <Image source={{ uri: art }} style={StyleSheet.absoluteFill} resizeMode="cover" />
       ) : null}
+      <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
       <LinearGradient
-        colors={["rgba(3,3,3,0.35)", "rgba(3,3,3,0.85)", "#030303"]}
+        colors={["rgba(10,10,10,0.25)", "rgba(10,10,10,0.85)", "#0A0A0A"]}
         style={StyleSheet.absoluteFill}
       />
 
@@ -75,10 +59,12 @@ export default function PlayerSheet() {
         className="flex-1 items-center justify-center px-6 py-4"
         onLayout={(e) => setAreaH(e.nativeEvent.layout.height)}
       >
-        {/* Artwork — blank dark box if the track has no thumbnail */}
-        <Image
+        {/* Artwork — crossfades on track change; blank box if no thumbnail */}
+        <Animated.Image
+          key={art || "empty"}
+          entering={FadeIn.duration(400)}
           source={art ? { uri: art } : undefined}
-          className="rounded-xl bg-yt-surface"
+          className="rounded-card bg-surface"
           style={{ width: artSize, height: artSize }}
           resizeMode="cover"
         />
@@ -86,29 +72,26 @@ export default function PlayerSheet() {
         {/* Title / Artist + like / menu */}
         <View className="mt-6 w-full flex-row items-center">
           <View className="flex-1 pr-3">
+            <Marquee
+              text={currentTrack.title}
+              className="text-xl font-bold text-primary"
+            />
             <Text
-              className="text-2xl font-bold text-yt-textPrimary"
-              numberOfLines={1}
-            >
-              {currentTrack.title}
-            </Text>
-            <Text
-              className="mt-1 text-base text-yt-textSecondary"
+              onPress={goArtist}
+              className="mt-1 text-[15px] text-secondary"
               numberOfLines={1}
             >
               {currentTrack.artist?.name ?? ""}
             </Text>
           </View>
-          <Pressable onPress={() => setLiked((v) => !v)} hitSlop={10} className="px-2">
-            <Ionicons
-              name={liked ? "thumbs-up" : "thumbs-up-outline"}
-              size={24}
-              color="#fff"
-            />
-          </Pressable>
-          <Pressable hitSlop={10} className="pl-2">
-            <Ionicons name="ellipsis-vertical" size={22} color="#fff" />
-          </Pressable>
+          <IconButton
+            name={liked ? "heart" : "heart-outline"}
+            size="md"
+            color={liked ? COLORS.accent : COLORS.primary}
+            onPress={() => toggleLike(currentTrack.id)}
+            className="px-2"
+          />
+          <IconButton name="ellipsis-vertical" size="md" color={COLORS.primary} className="pl-2" />
         </View>
 
         {/* Scrubber */}
@@ -116,38 +99,43 @@ export default function PlayerSheet() {
           <Seekbar />
         </View>
 
-        {/* Controls */}
+        {/* Transport */}
         <View className="mt-6 w-full flex-row items-center justify-between">
-          <Pressable onPress={toggleShuffle} hitSlop={12}>
-            <Ionicons name="shuffle" size={24} color={shuffle ? "#fff" : "#AAAAAA"} />
-          </Pressable>
-
-          <Pressable onPress={prev} hitSlop={12}>
-            <Ionicons name="play-skip-back" size={36} color="#fff" />
-          </Pressable>
+          <IconButton
+            name="shuffle"
+            size="md"
+            color={shuffle ? COLORS.accent : COLORS.secondary}
+            onPress={toggleShuffle}
+          />
+          <IconButton name="play-skip-back" size="lg" color={COLORS.primary} onPress={prev} />
 
           <Pressable
             onPress={togglePlay}
-            className="h-[68px] w-[68px] items-center justify-center rounded-full bg-white"
+            className="h-16 w-16 items-center justify-center rounded-full bg-primary active:opacity-90"
           >
+            {isBuffering && <BufferingRing size={64} color={COLORS.accent} />}
             <Ionicons
               name={isPlaying ? "pause" : "play"}
-              size={34}
-              color="#030303"
+              size={30}
+              color={COLORS.base}
               style={{ marginLeft: isPlaying ? 0 : 3 }}
             />
           </Pressable>
 
-          <Pressable onPress={next} hitSlop={12}>
-            <Ionicons name="play-skip-forward" size={36} color="#fff" />
-          </Pressable>
+          <IconButton name="play-skip-forward" size="lg" color={COLORS.primary} onPress={next} />
 
-          <Pressable onPress={cycleRepeat} hitSlop={12}>
-            <MaterialCommunityIcons
-              name={repeat === "one" ? "repeat-once" : "repeat"}
+          {/* repeat: Ionicons repeat + "1" badge for repeat-one (§9) */}
+          <Pressable onPress={cycleRepeat} hitSlop={12} className="active:opacity-80">
+            <Ionicons
+              name="repeat"
               size={24}
-              color={repeat !== "off" ? "#fff" : "#AAAAAA"}
+              color={repeat !== "off" ? COLORS.accent : COLORS.secondary}
             />
+            {repeat === "one" && (
+              <View className="absolute -right-1 -top-1 h-3.5 w-3.5 items-center justify-center rounded-full bg-accent">
+                <Text className="text-[9px] font-bold text-black">1</Text>
+              </View>
+            )}
           </Pressable>
         </View>
       </View>

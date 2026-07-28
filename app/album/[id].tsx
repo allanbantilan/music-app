@@ -1,120 +1,63 @@
-import { ScrollView, View, Text, Pressable } from "react-native";
+import { ScrollView, View, Text } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Image } from "react-native";
 import { useAlbum } from "@/lib/api";
-import { getThumbnailUrl } from "@/lib/utils";
-import TrackList from "@/components/TrackList";
 import { usePlayerStore } from "@/stores/playerStore";
-import type { Song } from "@ytmusic/shared-types";
-import TrackPlayer from "react-native-track-player";
-import { songToTrack } from "@/lib/player";
+import DetailHeader from "@/components/DetailHeader";
+import SongRow from "@/components/SongRow";
+import { playFromContext } from "@/lib/playback";
 
 export default function AlbumScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: album, isLoading } = useAlbum(id);
   const router = useRouter();
-  const { setQueue, setPlaying } = usePlayerStore();
+  const { currentTrack, isPlaying, playbackContext } = usePlayerStore();
 
-  const handlePlayAll = async (shuffle = false) => {
+  const play = (index: number) => {
     if (!album?.tracks.length) return;
-    const tracks = shuffle
-      ? [...album.tracks].sort(() => Math.random() - 0.5)
-      : album.tracks;
-    setQueue(tracks);
-    try {
-      const playerTracks = await Promise.all(tracks.map(songToTrack));
-      await TrackPlayer.reset();
-      await TrackPlayer.add(playerTracks);
-      await TrackPlayer.play();
-      setPlaying(true);
-    } catch (e) {
-      console.error("Playback error:", e);
-    }
-  };
-
-  const handlePlayTrack = async (track: Song) => {
-    setQueue(album?.tracks ?? []);
-    try {
-      const playerTracks = await Promise.all((album?.tracks ?? []).map(songToTrack));
-      await TrackPlayer.reset();
-      await TrackPlayer.add(playerTracks);
-      const idx = (album?.tracks ?? []).findIndex((t) => t.id === track.id);
-      if (idx >= 0) await TrackPlayer.skip(idx);
-      await TrackPlayer.play();
-      setPlaying(true);
-    } catch (e) {
-      console.error("Playback error:", e);
-    }
+    playFromContext(album.tracks, index, {
+      type: "album",
+      id: id!,
+      title: album.title,
+    });
   };
 
   if (isLoading || !album) {
     return (
-      <View className="flex-1 items-center justify-center bg-yt-bg">
-        <Text className="text-yt-textSecondary">Loading album...</Text>
+      <View className="flex-1 items-center justify-center bg-base">
+        <Text className="text-secondary">Loading album...</Text>
       </View>
     );
   }
 
+  const contextPlaying = isPlaying && playbackContext?.id === id;
+
   return (
-    <ScrollView className="flex-1 bg-yt-bg">
-      {/* Back button */}
-      <Pressable
-        onPress={() => router.back()}
-        className="absolute top-12 left-4 z-10 p-2"
-      >
-        <Text className="text-xl text-yt-textPrimary">←</Text>
-      </Pressable>
+    <ScrollView
+      className="flex-1 bg-base"
+      contentContainerStyle={{ paddingBottom: 140 }}
+      showsVerticalScrollIndicator={false}
+    >
+      <DetailHeader
+        thumbnail={album.thumbnail}
+        title={album.title}
+        meta={`${album.artist.name}${album.year ? ` · ${album.year}` : ""} · ${album.tracks.length} songs`}
+        isPlaying={contextPlaying}
+        onBack={() => router.back()}
+        onPlay={() => play(0)}
+        onMetaPress={() =>
+          router.push({ pathname: "/artist/[id]", params: { id: album.artist.id } })
+        }
+      />
 
-      {/* Cover */}
-      <View className="items-center pt-16 pb-4">
-        <Image
-          source={{ uri: getThumbnailUrl(album.thumbnail, 500) }}
-          className="h-[250px] w-[250px] rounded-xl"
-          resizeMode="cover"
-        />
-      </View>
-
-      {/* Info */}
-      <View className="items-center px-4">
-        <Text className="text-xl font-bold text-yt-textPrimary" numberOfLines={1}>
-          {album.title}
-        </Text>
-        <Text
-          className="mt-1 text-sm text-yt-textSecondary"
-          onPress={() =>
-            router.push({
-              pathname: "/artist/[id]",
-              params: { id: album.artist.id },
-            })
-          }
-        >
-          {album.artist.name}
-          {album.year ? ` · ${album.year}` : ""}
-        </Text>
-      </View>
-
-      {/* Actions */}
-      <View className="flex-row justify-center gap-4 px-4 py-4">
-        <Pressable
-          onPress={() => handlePlayAll(false)}
-          className="rounded-full bg-yt-textPrimary px-8 py-2"
-        >
-          <Text className="text-sm font-bold text-yt-bg">Play</Text>
-        </Pressable>
-        <Pressable
-          onPress={() => handlePlayAll(true)}
-          className="rounded-full border border-yt-textSecondary px-8 py-2"
-        >
-          <Text className="text-sm font-bold text-yt-textPrimary">Shuffle</Text>
-        </Pressable>
-      </View>
-
-      {/* Track list */}
-      <View className="mb-8">
-        <Text className="px-4 mb-2 text-sm text-yt-textSecondary">
-          {album.tracks.length} songs
-        </Text>
-        <TrackList tracks={album.tracks} onPlay={handlePlayTrack} />
+      <View className="mt-4">
+        {album.tracks.map((t, i) => (
+          <SongRow
+            key={`${t.id}-${i}`}
+            song={t}
+            active={currentTrack?.id === t.id}
+            onPlay={() => play(i)}
+          />
+        ))}
       </View>
     </ScrollView>
   );

@@ -19,25 +19,19 @@ export default function MediaCard({ item, onPress }: MediaCardProps) {
         ((item as Playlist).trackCount
           ? `${(item as Playlist).trackCount} songs`
           : "Playlist"));
+  const uri = getThumbnailUrl(item.thumbnail, 300);
 
   return (
-    <Pressable onPress={onPress} className="w-[140px]">
+    <Pressable onPress={onPress} className="w-[148px] active:opacity-80">
       <Image
-        source={
-          getThumbnailUrl(item.thumbnail, 300)
-            ? { uri: getThumbnailUrl(item.thumbnail, 300) }
-            : undefined
-        }
-        className="h-[140px] w-[140px] rounded-lg bg-yt-surface"
+        source={uri ? { uri } : undefined}
+        className="h-[148px] w-[148px] rounded-thumb bg-surface-raised"
         resizeMode="cover"
       />
-      <Text
-        className="mt-1.5 text-sm font-medium text-yt-textPrimary"
-        numberOfLines={1}
-      >
+      <Text className="mt-2 text-[15px] font-medium text-primary" numberOfLines={1}>
         {item.title}
       </Text>
-      <Text className="text-xs text-yt-textSecondary" numberOfLines={1}>
+      <Text className="mt-0.5 text-[13px] text-secondary" numberOfLines={1}>
         {subtitle}
       </Text>
     </Pressable>
