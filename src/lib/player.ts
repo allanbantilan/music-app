@@ -6,6 +6,7 @@ import TrackPlayer, {
 } from "react-native-track-player";
 import type { Song } from "@ytmusic/shared-types";
 import { streamUrl, authHeaders } from "./config";
+import { getThumbnailUrl } from "./utils";
 
 export async function setupPlayer() {
   let isSetup = false;
@@ -56,7 +57,7 @@ export async function songToTrack(song: Song): Promise<Track> {
     headers: authHeaders(),
     title: song.title,
     artist: song.artist.name,
-    artwork: song.thumbnail[0]?.url,
+    artwork: getThumbnailUrl(song.thumbnail) || undefined,
     duration: song.duration,
   };
 }

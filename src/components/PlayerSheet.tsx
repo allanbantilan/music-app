@@ -59,15 +59,21 @@ export default function PlayerSheet() {
         className="flex-1 items-center justify-center px-6 py-4"
         onLayout={(e) => setAreaH(e.nativeEvent.layout.height)}
       >
-        {/* Artwork — crossfades on track change; blank box if no thumbnail */}
-        <Animated.Image
-          key={art || "empty"}
-          entering={FadeIn.duration(400)}
-          source={art ? { uri: art } : undefined}
-          className="rounded-card bg-surface"
-          style={{ width: artSize, height: artSize }}
-          resizeMode="cover"
-        />
+        {/* Artwork — plain guarded Image (no reanimated: its entering snapshot
+            was setting a native null source). Blank box if no thumbnail. */}
+        {art ? (
+          <Image
+            source={{ uri: art }}
+            className="rounded-card bg-surface"
+            style={{ width: artSize, height: artSize }}
+            resizeMode="cover"
+          />
+        ) : (
+          <View
+            className="rounded-card bg-surface"
+            style={{ width: artSize, height: artSize }}
+          />
+        )}
 
         {/* Title / Artist + like / menu */}
         <View className="mt-6 w-full flex-row items-center">

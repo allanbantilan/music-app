@@ -24,7 +24,9 @@ export function getThumbnailUrl(
   // Only real http(s) urls are usable. Drops garbage from older persisted
   // queues (e.g. "MusicThumbnail" / "[object Object]" left by a past parser bug)
   // so it never reaches <Image source>.
-  const valid = thumbnails.filter((t) => /^https?:\/\//.test(t?.url ?? ""));
+  const valid = (thumbnails ?? []).filter((t) =>
+    /^https?:\/\//.test(t?.url ?? "")
+  );
   if (!valid.length) return "";
   const sorted = valid.sort(
     (a, b) =>

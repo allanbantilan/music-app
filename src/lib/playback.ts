@@ -7,7 +7,10 @@ import { storage } from "./storage";
 
 const store = () => usePlayerStore.getState();
 
-const PERSIST_KEY = "playbackState";
+// v2: the v1 persist stored corrupt thumbnails ("MusicThumbnail"/"[object
+// Object]") from an old parser bug, which restored as imageless tracks. Bumping
+// the key discards those stale queues; new persists hold clean thumbnails.
+const PERSIST_KEY = "playbackState_v2";
 
 /** Save queue + index + position so a cold start can resume (§8). */
 export async function persistState() {

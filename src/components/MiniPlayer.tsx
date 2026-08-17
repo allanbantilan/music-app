@@ -79,11 +79,15 @@ export default function MiniPlayer() {
           className="overflow-hidden rounded-card bg-surface-raised active:opacity-90"
         >
           <View className="flex-row items-center px-2 py-2">
-            <Image
-              source={uri ? { uri } : undefined}
-              className="h-10 w-10 rounded-thumb bg-surface"
-              resizeMode="cover"
-            />
+            {uri ? (
+              <Image
+                source={{ uri }}
+                className="h-10 w-10 rounded-thumb bg-surface"
+                resizeMode="cover"
+              />
+            ) : (
+              <View className="h-10 w-10 rounded-thumb bg-surface" />
+            )}
             <View className="ml-3 flex-1">
               <Marquee text={currentTrack.title} className="text-[15px] font-medium text-primary" />
               <Text className="mt-0.5 text-[13px] text-secondary" numberOfLines={1}>
