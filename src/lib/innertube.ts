@@ -44,12 +44,19 @@ async function getYT(): Promise<Innertube> {
 // ── Helpers ────────────────────────────────────────────────────
 
 function thumb(arr: any): Thumbnail[] {
-  const list = Array.isArray(arr) ? arr : arr ? Object.values(arr) : [];
-  return list.map((t: any) => ({
-    url: t?.url ?? t?.toString?.() ?? "",
-    width: t?.width ?? 0,
-    height: t?.height ?? 0,
-  }));
+  // youtubei.js often wraps thumbnails in a MusicThumbnail node whose real
+  // array lives under `.contents`; unwrap that before iterating. The old
+  // `t.toString()` fallback stringified such nodes to their class name
+  // ("MusicThumbnail"), which then leaked into <Image source>.
+  const raw = arr?.contents ?? arr;
+  const list = Array.isArray(raw) ? raw : raw ? Object.values(raw) : [];
+  return list
+    .map((t: any) => ({
+      url: typeof t?.url === "string" ? t.url : "",
+      width: t?.width ?? 0,
+      height: t?.height ?? 0,
+    }))
+    .filter((t) => t.url);
 }
 
 function parseSong(item: any): Song {

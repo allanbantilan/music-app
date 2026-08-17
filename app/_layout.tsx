@@ -58,7 +58,8 @@ export default function RootLayout() {
       else if (e.state === State.Paused || e.state === State.Stopped) setPlaying(false);
     });
     // Error: retry twice with backoff, then skip to next (§8).
-    const errSub = TrackPlayer.addEventListener(Event.PlaybackError, async () => {
+    const errSub = TrackPlayer.addEventListener(Event.PlaybackError, async (e) => {
+      console.log("[playback-error]", e?.code, e?.message);
       if (errorAttempts < 2) {
         errorAttempts++;
         setTimeout(async () => {

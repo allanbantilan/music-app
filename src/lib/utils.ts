@@ -21,8 +21,12 @@ export function getThumbnailUrl(
   thumbnails: { url: string; width: number; height: number }[],
   preferredSize: number = 300
 ): string {
-  if (!thumbnails?.length) return "";
-  const sorted = [...thumbnails].sort(
+  // Only real http(s) urls are usable. Drops garbage from older persisted
+  // queues (e.g. "MusicThumbnail" / "[object Object]" left by a past parser bug)
+  // so it never reaches <Image source>.
+  const valid = thumbnails.filter((t) => /^https?:\/\//.test(t?.url ?? ""));
+  if (!valid.length) return "";
+  const sorted = valid.sort(
     (a, b) =>
       Math.abs(a.width - preferredSize) - Math.abs(b.width - preferredSize)
   );

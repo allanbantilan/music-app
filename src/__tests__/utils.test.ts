@@ -50,6 +50,18 @@ describe("getThumbnailUrl", () => {
     const result = getThumbnailUrl(thumbnails);
     expect(result).toBe("http://example.com/300.jpg");
   });
+
+  it("drops non-http urls left by old persisted data", () => {
+    const bad = [
+      { url: "MusicThumbnail", width: 0, height: 0 },
+      { url: "[object Object],[object Object]", width: 0, height: 0 },
+    ];
+    expect(getThumbnailUrl(bad)).toBe("");
+    // valid entry still wins even when mixed with garbage
+    expect(
+      getThumbnailUrl([...bad, { url: "https://x/i.jpg", width: 300, height: 300 }])
+    ).toBe("https://x/i.jpg");
+  });
 });
 
 describe("truncate", () => {

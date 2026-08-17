@@ -11,4 +11,25 @@ const config = getDefaultConfig(__dirname);
 config.resolver.unstable_enablePackageExports = true;
 config.resolver.unstable_conditionNames = ["react-native", "require", "import"];
 
+// With package exports + the "import" condition above, Metro resolves tslib to
+// its ESM wrapper (tslib/modules/index.js). In tslib 2.4.0 (pulled in by
+// @shopify/flash-list) that wrapper does `_interopRequireDefault(require("../tslib.js")).default.__extends`,
+// but the CJS tslib.js sets __esModule with no `default` export, so `.default`
+// is undefined -> "Cannot read property '__extends' of undefined" at load. Pin
+// tslib to its CJS entry; consumers use `tslib.__extends` directly, which works.
+const origResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (moduleName === "tslib") {
+    return {
+      type: "sourceFile",
+      filePath: require.resolve("tslib/tslib.js"),
+    };
+  }
+  return (origResolveRequest ?? context.resolveRequest)(
+    context,
+    moduleName,
+    platform
+  );
+};
+
 module.exports = withNativeWind(config, { input: "./global.css" });

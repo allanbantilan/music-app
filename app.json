@@ -37,7 +37,7 @@
       "eas": {
         "projectId": "630df040-8d18-44e5-99d9-2fca3903e3ba"
       },
-      "BACKEND_URL": "http://192.168.1.9:8000",
+      "BACKEND_URL": "http://192.168.1.14:8000",
       "TOKEN": "test_token_backend"
     },
     "owner": "allandev123"
